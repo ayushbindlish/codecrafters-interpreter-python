@@ -21,10 +21,19 @@ def main():
 
     # Uncomment this block to pass the first stage
     if file_contents:
-        raise NotImplementedError("Scanner not implemented")
-    else:
-        print("EOF  null") # Placeholder, remove this line when implementing the scanner
-
+        # print("EOF  null")
+        for line in file_contents:
+            for char in line:
+                match char:
+                    case "(":
+                        token = "LEFT_PAREN"
+                    case ")":
+                        token = "RIGHT_PAREN"
+                    case _:
+                        continue
+                        # token = ""
+                print(f"{token} {char} null")
+        print("EOF  null")
 
 if __name__ == "__main__":
     main()
