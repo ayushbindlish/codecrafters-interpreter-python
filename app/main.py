@@ -29,6 +29,10 @@ def main():
                         token = "LEFT_PAREN"
                     case ")":
                         token = "RIGHT_PAREN"
+                    case "{":
+                        token = "LEFT_BRACE"
+                    case "}":
+                        token="RIGHT_BRACE"
                     case _:
                         continue
                         # token = ""
