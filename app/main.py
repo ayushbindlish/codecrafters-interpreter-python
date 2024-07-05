@@ -33,6 +33,18 @@ def main():
                         token = "LEFT_BRACE"
                     case "}":
                         token="RIGHT_BRACE"
+                    case ',':
+                        token="COMMA"
+                    case '.':
+                        token="DOT"
+                    case '-':
+                        token="MINUS"
+                    case '+':
+                        token="PLUS"
+                    case ';':
+                        token="SEMICOLON"
+                    case '*':
+                        token="STAR"
                     case _:
                         continue
                         # token = ""
