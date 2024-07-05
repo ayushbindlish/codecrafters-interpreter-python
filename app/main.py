@@ -33,7 +33,7 @@ def main():
                         continue
                         # token = ""
                 print(f"{token} {char} null")
-        print("EOF  null")
+    print("EOF  null")
 
 if __name__ == "__main__":
     main()
