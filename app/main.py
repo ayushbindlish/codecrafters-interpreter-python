@@ -1,285 +1,199 @@
+import enum
+import pathlib
 import sys
+from typing import Any, List, Tuple
 from dataclasses import dataclass
 
+class TokenType(enum.Enum):
+    LEFT_PAREN = "LEFT_PAREN"
+    RIGHT_PAREN = "RIGHT_PAREN"
+    LEFT_BRACE = "LEFT_BRACE"
+    RIGHT_BRACE = "RIGHT_BRACE"
+    STAR = "STAR"
+    DOT = "DOT"
+    COMMA = "COMMA"
+    PLUS = "PLUS"
+    MINUS = "MINUS"
+    SEMICOLON = "SEMICOLON"
+    EQUAL = "EQUAL"
+    EQUAL_EQUAL = "EQUAL_EQUAL"
+    BANG = "BANG"
+    BANG_EQUAL = "BANG_EQUAL"
+    LESS = "LESS"
+    LESS_EQUAL = "LESS_EQUAL"
+    GREATER = "GREATER"
+    GREATER_EQUAL = "GREATER_EQUAL"
+    SLASH = "SLASH"
+    STRING = "STRING"
+    NUMBER = "NUMBER"
+    WORD = "WORD"
+    EOF = "EOF"
 
 @dataclass
 class Token:
-    type: str
+    type: TokenType
     lexeme: str
-    startLine: int
-    endLine: int = None
-    literal: str = None  # Added for string values
+    literal: Any
+    line: int
+    end_line: int = None
 
+    def __str__(self) -> str:
+        literal_str = "null" if self.literal is None else str(self.literal)
+        return f"{self.type.value} {self.lexeme} {literal_str}"
 
-# Define the token types as class constants
-class TokenType:
-    LEFT_PAREN = 'LEFT_PAREN'
-    RIGHT_PAREN = 'RIGHT_PAREN'
-    LEFT_BRACE = 'LEFT_BRACE'
-    RIGHT_BRACE = 'RIGHT_BRACE'
-    COMMA = 'COMMA'
-    DOT = 'DOT'
-    MINUS = 'MINUS'
-    PLUS = 'PLUS'
-    SEMICOLON = 'SEMICOLON'
-    STAR = 'STAR'
-    EQUAL = 'EQUAL'
-    EQUAL_EQUAL = 'EQUAL_EQUAL'
-    BANG = 'BANG'
-    BANG_EQUAL = 'BANG_EQUAL'
-    LESS = 'LESS'
-    LESS_EQUAL = 'LESS_EQUAL'
-    GREATER = 'GREATER'
-    GREATER_EQUAL = 'GREATER_EQUAL'
-    SLASH = 'SLASH'
-    COMMENT = 'COMMENT'
-    SPACE = '|SPACE|'
-    TAB = '|TAB|'
-    NEWLINE = '|NEWLINE|'
-    WORD = 'WORD'
-    NUMBER = 'NUMBER'
-    STRING = 'STRING'
+class Scanner:
+    def __init__(self, source: str) -> None:
+        self.source = source
+        self.tokens: List[Token] = []
+        self.start = 0
+        self.current = 0
+        self.line = 1
+        self.errors: List[str] = []
 
+    def scan_tokens(self) -> Tuple[List[Token], List[str]]:
+        while not self.is_at_end():
+            self.start = self.current
+            self.scan_token()
+        self.tokens.append(Token(TokenType.EOF, "", None, self.line))
+        return self.tokens, self.errors
 
-# Define a custom exception for unexpected characters
-class UnexpectedCharacter(Exception):
-    def __init__(self, char, line_number):
-        """
-        Initialize the exception with the unexpected character and the line number where it was found.
+    def is_at_end(self) -> bool:
+        return self.current >= len(self.source)
 
-        Args:
-            char (str): The unexpected character.
-            line_number (int): The line number where the unexpected character was found.
-        """
-        self.char = char
-        self.line_number = line_number
-        self.message = f"[line {line_number}] Error: Unexpected character: {char}"
-        super().__init__(self.message)
-
-
-# Define a custom exception for unterminated strings
-class UnterminatedStringError(Exception):
-    def __init__(self, line_number):
-        """
-        Initialize the exception for an unterminated string and the line number where it was found.
-
-        Args:
-            line_number (int): The line number where the unterminated string was found.
-        """
-        self.line_number = line_number
-        self.message = f"[line {line_number}] Error: Unterminated string."
-        super().__init__(self.message)
-
-
-# Define a tokenizer class to handle tokenization
-class Tokenizer:
-    def __init__(self, filename):
-        """
-        Initialize the tokenizer with the given filename.
-
-        Args:
-            filename (str): The name of the file to tokenize.
-        """
-        self.filename = filename
-        self.tokens = []
-        self.errors = []
-        self.current_line = 1
-
-    def read_file(self):
-        """
-        Read the contents of the file.
-
-        Returns:
-            list[str]: The lines of the file.
-        """
-        with open(self.filename) as file:
-            return file.readlines()
-
-    def tokenize(self, file_contents):
-        """
-        Tokenize the contents of the file.
-
-        Args:
-            file_contents (list[str]): The lines of the file.
-        """
-        line_number = 1
-        for line in file_contents:
-            i = 0
-            while i < len(line):
-                char = line[i]
-                try:
-                    if char == '/' and i + 1 < len(line) and line[i + 1] == '/':
-                        # Skip the rest of the line as it is a comment
-                        break
-
-                    if char == '"':
-                        # Handle string literals
-                        start_line = line_number
-                        start = i
-                        i += 1
-                        while i < len(line) and line[i] != '"':
-                            if line[i] == '\n':
-                                line_number += 1
-                            i += 1
-                        if i >= len(line) or line[i] != '"':
-                            raise UnterminatedStringError(start_line)
-                        lexeme = line[start:i + 1]
-                        literal = lexeme[1:-1]  # Strip the surrounding quotes
-                        end_line = line_number
-                        self.tokens.append(Token(TokenType.STRING, lexeme, start_line, end_line, literal))
-                        i += 1
-                        continue
-                    if char.isdigit() or (char == '.' and i + 1 < len(line) and line[i + 1].isdigit()):
-                        # Handle number literals
-                        start = i
-                        while i < len(line) and (line[i].isdigit() or line[i] == '.'):
-                            i += 1
-                        lexeme = line[start:i]
-                        self.tokens.append(Token(TokenType.NUMBER, lexeme, line_number, line_number, lexeme))
-                        continue
-                    if char.isalpha():
-                        # Collect sequences of alphabetic characters as words
-                        start = i
-                        while i < len(line) and line[i].isalpha():
-                            i += 1
-                        lexeme = line[start:i]
-                        self.tokens.append(Token(TokenType.WORD, lexeme, line_number, line_number))
-                        continue
-
-                    if i < len(line) - 1:
-                        token_type, skip = self.match_char(char, line[i + 1], line_number)
-                    else:
-                        token_type, skip = self.match_char(char, None, line_number)
-
-                    if token_type:
-                        lexeme = char if not skip else line[i:i + 2]
-                        token = Token(token_type, lexeme, line_number, line_number)
-                        self.tokens.append(token)
-                        if token.type == TokenType.COMMENT:
-                            break
-
-                    i += 1 if not skip else 2
-                except (UnexpectedCharacter, UnterminatedStringError) as e:
-                    self.errors.append(e.message)
-                    i += 1
-
-            line_number += 1
-
-    @staticmethod
-    def match_char(char, next_char, line_number):
-        """
-        Match characters to token types, including handling lookahead for multi-character tokens.
-
-        Args:
-            char (str): The current character.
-            next_char (str or None): The next character for lookahead.
-            line_number (int): The line number where the character is found.
-
-        Returns:
-            tuple: A tuple containing the token type and a boolean indicating whether to skip the next character.
-
-        Raises:
-            UnexpectedCharacter: If the character does not match any known token.
-        """
+    def scan_token(self) -> None:
+        char = self.advance()
         match char:
-            case '(':
-                return TokenType.LEFT_PAREN, False
-            case ')':
-                return TokenType.RIGHT_PAREN, False
-            case '{':
-                return TokenType.LEFT_BRACE, False
-            case '}':
-                return TokenType.RIGHT_BRACE, False
-            case ',':
-                return TokenType.COMMA, False
-            case '.':
-                return TokenType.DOT, False
-            case '-':
-                return TokenType.MINUS, False
-            case '+':
-                return TokenType.PLUS, False
-            case ';':
-                return TokenType.SEMICOLON, False
-            case '*':
-                return TokenType.STAR, False
-            case '=':
-                if next_char == '=':
-                    return TokenType.EQUAL_EQUAL, True
+            case "(":
+                self.add_token(TokenType.LEFT_PAREN)
+            case ")":
+                self.add_token(TokenType.RIGHT_PAREN)
+            case "{":
+                self.add_token(TokenType.LEFT_BRACE)
+            case "}":
+                self.add_token(TokenType.RIGHT_BRACE)
+            case "*":
+                self.add_token(TokenType.STAR)
+            case ".":
+                self.add_token(TokenType.DOT)
+            case ",":
+                self.add_token(TokenType.COMMA)
+            case "+":
+                self.add_token(TokenType.PLUS)
+            case "-":
+                self.add_token(TokenType.MINUS)
+            case ";":
+                self.add_token(TokenType.SEMICOLON)
+            case "!":
+                self.add_token(TokenType.BANG_EQUAL) if self.match("=") else self.add_token(TokenType.BANG)
+            case "=":
+                self.add_token(TokenType.EQUAL_EQUAL) if self.match("=") else self.add_token(TokenType.EQUAL)
+            case "<":
+                self.add_token(TokenType.LESS_EQUAL) if self.match("=") else self.add_token(TokenType.LESS)
+            case ">":
+                self.add_token(TokenType.GREATER_EQUAL) if self.match("=") else self.add_token(TokenType.GREATER)
+            case "/":
+                if self.match("/"):
+                    while self.peek() != "\n" and not self.is_at_end():
+                        self.advance()
                 else:
-                    return TokenType.EQUAL, False
-            case '!':
-                if next_char == '=':
-                    return TokenType.BANG_EQUAL, True
-                else:
-                    return TokenType.BANG, False
-            case '<':
-                if next_char == '=':
-                    return TokenType.LESS_EQUAL, True
-                else:
-                    return TokenType.LESS, False
-            case '>':
-                if next_char == '=':
-                    return TokenType.GREATER_EQUAL, True
-                else:
-                    return TokenType.GREATER, False
-            case '/':
-                if next_char == '/':
-                    return TokenType.COMMENT, True
-                else:
-                    return TokenType.SLASH, False
+                    self.add_token(TokenType.SLASH)
+            case " " | "\r" | "\t":
+                ...
+            case "\n":
+                self.line += 1
+            case '"':
+                self.string()
             case _:
-                if ord(char) == ord(' '):
-                    return TokenType.SPACE, False
-                elif ord(char) == ord('\t'):
-                    return TokenType.TAB, False
-                elif ord(char) == ord('\n'):
-                    return TokenType.NEWLINE, False
+                if self.is_digit(char):
+                    self.number()
+                elif self.is_alpha(char):
+                    self.identifier()
                 else:
-                    raise UnexpectedCharacter(char, line_number)
+                    self.errors.append(f"[line {self.line}] Error: Unexpected character: {char}")
 
-    def print_tokens(self):
-        """
-        Print the tokens in the specified format.
-        """
-        for token in self.tokens:
-            if token.type in (TokenType.STRING,TokenType.NUMBER):
-                print(f"{token.type} {token.lexeme} {token.literal}")
-            elif token.type not in (TokenType.COMMENT, TokenType.SPACE, TokenType.TAB, TokenType.NEWLINE):
-                print(f"{token.type} {token.lexeme} null")
-        print("EOF  null")
+    def advance(self) -> str:
+        self.current += 1
+        return self.source[self.current - 1]
 
-    def print_errors(self):
-        """
-        Print the errors to stderr.
-        """
-        for error in self.errors:
-            print(error, file=sys.stderr)
+    def add_token(self, type: TokenType, literal: Any = None) -> None:
+        text = self.source[self.start:self.current]
+        self.tokens.append(Token(type, text, literal, self.line))
 
+    def peek(self) -> str:
+        return "\0" if self.is_at_end() else self.source[self.current]
 
-def main():
-    """
-    Main function to handle command-line arguments and initiate tokenization.
-    """
+    def peek_next(self) -> str:
+        if self.current + 1 >= len(self.source):
+            return "\0"
+        return self.source[self.current + 1]
+
+    def match(self, expected: str) -> bool:
+        if self.is_at_end():
+            return False
+        if self.source[self.current] != expected:
+            return False
+        self.current += 1
+        return True
+
+    def string(self) -> None:
+        start_line = self.line
+        while self.peek() != '"' and not self.is_at_end():
+            if self.peek() == "\n":
+                self.line += 1
+            self.advance()
+        if self.is_at_end():
+            self.errors.append(f"[line {start_line}] Error: Unterminated string.")
+            return
+        self.advance()
+        value = self.source[self.start + 1:self.current - 1]
+        self.tokens.append(Token(TokenType.STRING, self.source[self.start:self.current], value, start_line, self.line))
+
+    def is_digit(self, char: str) -> bool:
+        return char >= "0" and char <= "9"
+
+    def number(self) -> None:
+        while self.is_digit(self.peek()):
+            self.advance()
+        if self.peek() == "." and self.is_digit(self.peek_next()):
+            self.advance()
+        while self.is_digit(self.peek()):
+            self.advance()
+        lexeme = self.source[self.start:self.current]
+        if lexeme.count('.') > 1:
+            self.errors.append(f"[line {self.line}] Error: Invalid number: {lexeme}")
+        else:
+            self.add_token(TokenType.NUMBER, float(lexeme))
+
+    def identifier(self) -> None:
+        while self.is_alpha_numeric(self.peek()):
+            self.advance()
+        text = self.source[self.start:self.current]
+        self.add_token(TokenType.WORD, text)
+
+    def is_alpha(self, char: str) -> bool:
+        return (char >= "a" and char <= "z") or (char >= "A" and char <= "Z") or char == "_"
+
+    def is_alpha_numeric(self, char: str) -> bool:
+        return self.is_alpha(char) or self.is_digit(char)
+
+def main() -> None:
     if len(sys.argv) < 3:
         print("Usage: ./your_program.sh tokenize <filename>", file=sys.stderr)
         exit(1)
-
     command = sys.argv[1]
     filename = sys.argv[2]
-
     if command != "tokenize":
         print(f"Unknown command: {command}", file=sys.stderr)
         exit(1)
-
-    tokenizer = Tokenizer(filename)
-    file_contents = tokenizer.read_file()
-    tokenizer.tokenize(file_contents)
-    tokenizer.print_errors()
-    tokenizer.print_tokens()
-
-    if tokenizer.errors:
+    file_contents = pathlib.Path(filename).read_text()
+    scanner = Scanner(file_contents)
+    tokens, errors = scanner.scan_tokens()
+    for error in errors:
+        print(error, file=sys.stderr)
+    for token in tokens:
+        print(token)
+    if errors:
         exit(65)
-
 
 if __name__ == "__main__":
     main()
