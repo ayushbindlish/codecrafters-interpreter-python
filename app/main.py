@@ -31,6 +31,8 @@ class TokenType:
     GREATER_EQUAL = 'GREATER_EQUAL'
     SLASH = 'SLASH'
     COMMENT = 'COMMENT'
+    SPACE = '|SPACE|'
+    TAB = '|TAB|'
 
 
 # Define a custom exception for unexpected characters
@@ -137,6 +139,10 @@ class Tokenizer:
                 return TokenType.SEMICOLON, False
             case '*':
                 return TokenType.STAR, False
+            case ' ':
+                return TokenType.SPACE, False
+            case '\t':
+                return TokenType.TAB, False
             case '=':
                 if next_char == '=':
                     return TokenType.EQUAL_EQUAL, True
