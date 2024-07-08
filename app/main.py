@@ -29,6 +29,8 @@ class TokenType:
     LESS_EQUAL = 'LESS_EQUAL'
     GREATER = 'GREATER'
     GREATER_EQUAL = 'GREATER_EQUAL'
+    SLASH = 'SLASH'
+    COMMENT = 'COMMENT'
 
 
 # Define a custom exception for unexpected characters
@@ -86,10 +88,13 @@ class Tokenizer:
                         token_type, skip = self.match_char(char, line[i + 1], line_number)
                     else:
                         token_type, skip = self.match_char(char, None, line_number)
-
                     if token_type:
                         lexeme = char if not skip else line[i:i + 2]
-                        self.tokens.append(Token(token_type, lexeme, line_number))
+                        token = Token(token_type, lexeme, line_number)
+                        self.tokens.append(token)
+                        if token.type == TokenType.COMMENT:
+                            break
+
                     i += 1 if not skip else 2
                 except UnexpectedCharacter as e:
                     self.errors.append(e.message)
@@ -152,6 +157,11 @@ class Tokenizer:
                     return TokenType.GREATER_EQUAL, True
                 else:
                     return TokenType.GREATER, False
+            case '/':
+                if next_char == '/':
+                    return TokenType.COMMENT, True
+                else:
+                    return TokenType.SLASH, False
             case _:
                 raise UnexpectedCharacter(char, line_number)
 
@@ -160,7 +170,8 @@ class Tokenizer:
         Print the tokens in the specified format.
         """
         for token in self.tokens:
-            print(f"{token.type} {token.lexeme} null")
+            if token.type != TokenType.COMMENT:
+                print(f"{token.type} {token.lexeme} null")
         print("EOF  null")
 
     def print_errors(self):
