@@ -23,6 +23,8 @@ class TokenType:
     STAR = 'STAR'
     EQUAL = 'EQUAL'
     EQUAL_EQUAL = 'EQUAL_EQUAL'
+    BANG = 'BANG'
+    BANG_EQUAL = 'BANG_EQUAL'
 
 
 # Define a custom exception for unexpected characters
@@ -131,6 +133,11 @@ class Tokenizer:
                     return TokenType.EQUAL_EQUAL, True
                 else:
                     return TokenType.EQUAL, False
+            case '!':
+                if next_char == '=':
+                    return TokenType.BANG_EQUAL, True
+                else:
+                    return TokenType.BANG, False
             case _:
                 raise UnexpectedCharacter(char, line_number)
 
