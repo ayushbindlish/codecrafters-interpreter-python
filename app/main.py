@@ -242,7 +242,7 @@ class Tokenizer:
         Print the tokens in the specified format.
         """
         for token in self.tokens:
-            if token.type == TokenType.STRING:
+            if token.type in (TokenType.STRING,TokenType.NUMBER):
                 print(f"{token.type} {token.lexeme} {token.literal}")
             elif token.type not in (TokenType.COMMENT, TokenType.SPACE, TokenType.TAB, TokenType.NEWLINE):
                 print(f"{token.type} {token.lexeme} null")
