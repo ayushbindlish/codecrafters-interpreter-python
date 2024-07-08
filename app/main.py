@@ -1,26 +1,40 @@
 import sys
-from enum import Enum, auto
+from dataclasses import dataclass
 
 
-# Define an enum for the different types of tokens
-class TokenType(Enum):
-    LEFT_PAREN = auto()
-    RIGHT_PAREN = auto()
-    LEFT_BRACE = auto()
-    RIGHT_BRACE = auto()
-    COMMA = auto()
-    DOT = auto()
-    MINUS = auto()
-    PLUS = auto()
-    SEMICOLON = auto()
-    STAR = auto()
-    EQUAL = auto()
-    EQUAL_EQUAL = auto()
+@dataclass
+class Token:
+    type: str
+    lexeme: str
+    line: int
+
+
+# Define the token types as class constants
+class TokenType:
+    LEFT_PAREN = 'LEFT_PAREN'
+    RIGHT_PAREN = 'RIGHT_PAREN'
+    LEFT_BRACE = 'LEFT_BRACE'
+    RIGHT_BRACE = 'RIGHT_BRACE'
+    COMMA = 'COMMA'
+    DOT = 'DOT'
+    MINUS = 'MINUS'
+    PLUS = 'PLUS'
+    SEMICOLON = 'SEMICOLON'
+    STAR = 'STAR'
+    EQUAL = 'EQUAL'
+    EQUAL_EQUAL = 'EQUAL_EQUAL'
 
 
 # Define a custom exception for unexpected characters
 class UnexpectedCharacter(Exception):
     def __init__(self, char, line_number):
+        """
+        Initialize the exception with the unexpected character and the line number where it was found.
+
+        Args:
+            char (str): The unexpected character.
+            line_number (int): The line number where the unexpected character was found.
+        """
         self.char = char
         self.line_number = line_number
         self.message = f"[line {line_number}] Error: Unexpected character: {char}"
@@ -30,38 +44,67 @@ class UnexpectedCharacter(Exception):
 # Define a tokenizer class to handle tokenization
 class Tokenizer:
     def __init__(self, filename):
+        """
+        Initialize the tokenizer with the given filename.
+
+        Args:
+            filename (str): The name of the file to tokenize.
+        """
         self.filename = filename
         self.tokens = []
         self.errors = []
 
-    # Read the file contents
     def read_file(self):
+        """
+        Read the contents of the file.
+
+        Returns:
+            list[str]: The lines of the file.
+        """
         with open(self.filename) as file:
             return file.readlines()
 
-    # Tokenize the file contents
     def tokenize(self, file_contents):
+        """
+        Tokenize the contents of the file.
+
+        Args:
+            file_contents (list[str]): The lines of the file.
+        """
         for line_number, line in enumerate(file_contents, start=1):
             i = 0
-
             while i < len(line):
                 char = line[i]
                 try:
                     if i < len(line) - 1:
-                        token, skip = self.match_char(char, line[i + 1], line_number)
+                        token_type, skip = self.match_char(char, line[i + 1], line_number)
                     else:
-                        token, skip = self.match_char(char, None, line_number)
+                        token_type, skip = self.match_char(char, None, line_number)
 
-                    if token:
-                        self.tokens.append((token, char if not skip else line[i:i + 2]))
+                    if token_type:
+                        lexeme = char if not skip else line[i:i + 2]
+                        self.tokens.append(Token(token_type, lexeme, line_number))
                     i += 1 if not skip else 2
                 except UnexpectedCharacter as e:
                     self.errors.append(e.message)
                     i += 1
 
-    # Match characters to token types
     @staticmethod
     def match_char(char, next_char, line_number):
+        """
+        Match characters to token types, including handling lookahead for multi-character tokens.
+
+        Args:
+            char (str): The current character.
+            next_char (str or None): The next character for lookahead.
+            line_number (int): The line number where the character is found.
+
+        Returns:
+            tuple: A tuple containing the token type and a boolean indicating whether to skip the next character.
+
+        Raises:
+            UnexpectedCharacter: If the character does not match any known token.
+        """
         match char:
             case "(":
                 return TokenType.LEFT_PAREN, False
@@ -88,24 +131,29 @@ class Tokenizer:
                     return TokenType.EQUAL_EQUAL, True
                 else:
                     return TokenType.EQUAL, False
-
             case _:
                 raise UnexpectedCharacter(char, line_number)
 
-    # Print the tokens
     def print_tokens(self):
-        for token, char in self.tokens:
-            print(f"{token.name} {char} null")
+        """
+        Print the tokens in the specified format.
+        """
+        for token in self.tokens:
+            print(f"{token.type} {token.lexeme} null")
         print("EOF  null")
 
-    # Print the errors
     def print_errors(self):
+        """
+        Print the errors to stderr.
+        """
         for error in self.errors:
             print(error, file=sys.stderr)
 
 
-# Main function to handle command-line arguments and initiate tokenization
 def main():
+    """
+    Main function to handle command-line arguments and initiate tokenization.
+    """
     if len(sys.argv) < 3:
         print("Usage: ./your_program.sh tokenize <filename>", file=sys.stderr)
         exit(1)
@@ -123,7 +171,6 @@ def main():
     tokenizer.print_errors()
     tokenizer.print_tokens()
 
-    # If there are errors, exit with return code 65
     if tokenizer.errors:
         exit(65)
 
