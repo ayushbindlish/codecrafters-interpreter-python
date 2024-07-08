@@ -25,6 +25,10 @@ class TokenType:
     EQUAL_EQUAL = 'EQUAL_EQUAL'
     BANG = 'BANG'
     BANG_EQUAL = 'BANG_EQUAL'
+    LESS = 'LESS'
+    LESS_EQUAL = 'LESS_EQUAL'
+    GREATER = 'GREATER'
+    GREATER_EQUAL = 'GREATER_EQUAL'
 
 
 # Define a custom exception for unexpected characters
@@ -138,6 +142,16 @@ class Tokenizer:
                     return TokenType.BANG_EQUAL, True
                 else:
                     return TokenType.BANG, False
+            case '<':
+                if next_char == '=':
+                    return TokenType.LESS_EQUAL, True
+                else:
+                    return TokenType.LESS, False
+            case '>':
+                if next_char == '=':
+                    return TokenType.GREATER_EQUAL, True
+                else:
+                    return TokenType.GREATER, False
             case _:
                 raise UnexpectedCharacter(char, line_number)
 
