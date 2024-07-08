@@ -6,7 +6,9 @@ from dataclasses import dataclass
 class Token:
     type: str
     lexeme: str
-    line: int
+    startLine: int
+    endLine: int = None
+    literal: str = None  # Added for string values
 
 
 # Define the token types as class constants
@@ -34,6 +36,8 @@ class TokenType:
     SPACE = '|SPACE|'
     TAB = '|TAB|'
     NEWLINE = '|NEWLINE|'
+    WORD = 'WORD'
+    STRING = 'STRING'
 
 
 # Define a custom exception for unexpected characters
@@ -52,6 +56,20 @@ class UnexpectedCharacter(Exception):
         super().__init__(self.message)
 
 
+# Define a custom exception for unterminated strings
+class UnterminatedStringError(Exception):
+    def __init__(self, line_number):
+        """
+        Initialize the exception for an unterminated string and the line number where it was found.
+
+        Args:
+            line_number (int): The line number where the unterminated string was found.
+        """
+        self.line_number = line_number
+        self.message = f"[line {line_number}] Error: Unterminated string."
+        super().__init__(self.message)
+
+
 # Define a tokenizer class to handle tokenization
 class Tokenizer:
     def __init__(self, filename):
@@ -64,6 +82,7 @@ class Tokenizer:
         self.filename = filename
         self.tokens = []
         self.errors = []
+        self.current_line = 1
 
     def read_file(self):
         """
@@ -82,27 +101,61 @@ class Tokenizer:
         Args:
             file_contents (list[str]): The lines of the file.
         """
-        for line_number, line in enumerate(file_contents, start=1):
+        line_number = 1
+        for line in file_contents:
             i = 0
             while i < len(line):
                 char = line[i]
-                # print(r"{}".format(ord(char)))
                 try:
+                    if char == '/' and i + 1 < len(line) and line[i + 1] == '/':
+                        # Skip the rest of the line as it is a comment
+                        break
+
+                    if char == '"':
+                        # Handle string literals
+                        start_line = line_number
+                        start = i
+                        i += 1
+                        while i < len(line) and line[i] != '"':
+                            if line[i] == '\n':
+                                line_number += 1
+                            i += 1
+                        if i >= len(line) or line[i] != '"':
+                            raise UnterminatedStringError(start_line)
+                        lexeme = line[start:i + 1]
+                        literal = lexeme[1:-1]  # Strip the surrounding quotes
+                        end_line = line_number
+                        self.tokens.append(Token(TokenType.STRING, lexeme, start_line, end_line, literal))
+                        i += 1
+                        continue
+
+                    if char.isalpha():
+                        # Collect sequences of alphabetic characters as words
+                        start = i
+                        while i < len(line) and line[i].isalpha():
+                            i += 1
+                        lexeme = line[start:i]
+                        self.tokens.append(Token(TokenType.WORD, lexeme, line_number, line_number))
+                        continue
+
                     if i < len(line) - 1:
                         token_type, skip = self.match_char(char, line[i + 1], line_number)
                     else:
                         token_type, skip = self.match_char(char, None, line_number)
+
                     if token_type:
                         lexeme = char if not skip else line[i:i + 2]
-                        token = Token(token_type, lexeme, line_number)
+                        token = Token(token_type, lexeme, line_number, line_number)
                         self.tokens.append(token)
                         if token.type == TokenType.COMMENT:
                             break
 
                     i += 1 if not skip else 2
-                except UnexpectedCharacter as e:
+                except (UnexpectedCharacter, UnterminatedStringError) as e:
                     self.errors.append(e.message)
                     i += 1
+
+            line_number += 1
 
     @staticmethod
     def match_char(char, next_char, line_number):
@@ -173,14 +226,17 @@ class Tokenizer:
                     return TokenType.TAB, False
                 elif ord(char) == ord('\n'):
                     return TokenType.NEWLINE, False
-                raise UnexpectedCharacter(char, line_number)
+                else:
+                    raise UnexpectedCharacter(char, line_number)
 
     def print_tokens(self):
         """
         Print the tokens in the specified format.
         """
         for token in self.tokens:
-            if token.type not in (TokenType.COMMENT, TokenType.SPACE, TokenType.TAB, TokenType.NEWLINE):
+            if token.type == TokenType.STRING:
+                print(f"{token.type} {token.lexeme} {token.literal}")
+            elif token.type not in (TokenType.COMMENT, TokenType.SPACE, TokenType.TAB, TokenType.NEWLINE):
                 print(f"{token.type} {token.lexeme} null")
         print("EOF  null")
 
