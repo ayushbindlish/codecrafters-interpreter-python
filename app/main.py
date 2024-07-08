@@ -33,6 +33,7 @@ class TokenType:
     COMMENT = 'COMMENT'
     SPACE = '|SPACE|'
     TAB = '|TAB|'
+    NEWLINE = '|NEWLINE|'
 
 
 # Define a custom exception for unexpected characters
@@ -85,6 +86,7 @@ class Tokenizer:
             i = 0
             while i < len(line):
                 char = line[i]
+                # print(r"{}".format(ord(char)))
                 try:
                     if i < len(line) - 1:
                         token_type, skip = self.match_char(char, line[i + 1], line_number)
@@ -119,13 +121,13 @@ class Tokenizer:
             UnexpectedCharacter: If the character does not match any known token.
         """
         match char:
-            case "(":
+            case '(':
                 return TokenType.LEFT_PAREN, False
-            case ")":
+            case ')':
                 return TokenType.RIGHT_PAREN, False
-            case "{":
+            case '{':
                 return TokenType.LEFT_BRACE, False
-            case "}":
+            case '}':
                 return TokenType.RIGHT_BRACE, False
             case ',':
                 return TokenType.COMMA, False
@@ -139,10 +141,6 @@ class Tokenizer:
                 return TokenType.SEMICOLON, False
             case '*':
                 return TokenType.STAR, False
-            case ' ':
-                return TokenType.SPACE, False
-            case '\t':
-                return TokenType.TAB, False
             case '=':
                 if next_char == '=':
                     return TokenType.EQUAL_EQUAL, True
@@ -169,6 +167,12 @@ class Tokenizer:
                 else:
                     return TokenType.SLASH, False
             case _:
+                if ord(char) == ord(' '):
+                    return TokenType.SPACE, False
+                elif ord(char) == ord('\t'):
+                    return TokenType.TAB, False
+                elif ord(char) == ord('\n'):
+                    return TokenType.NEWLINE, False
                 raise UnexpectedCharacter(char, line_number)
 
     def print_tokens(self):
@@ -176,7 +180,7 @@ class Tokenizer:
         Print the tokens in the specified format.
         """
         for token in self.tokens:
-            if token.type not in (TokenType.COMMENT,TokenType.SPACE,TokenType.TAB):
+            if token.type not in (TokenType.COMMENT, TokenType.SPACE, TokenType.TAB, TokenType.NEWLINE):
                 print(f"{token.type} {token.lexeme} null")
         print("EOF  null")
 
