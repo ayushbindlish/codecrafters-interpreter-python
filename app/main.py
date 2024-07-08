@@ -176,7 +176,7 @@ class Tokenizer:
         Print the tokens in the specified format.
         """
         for token in self.tokens:
-            if token.type != TokenType.COMMENT:
+            if token.type not in (TokenType.COMMENT,TokenType.SPACE,TokenType.TAB):
                 print(f"{token.type} {token.lexeme} null")
         print("EOF  null")
 
