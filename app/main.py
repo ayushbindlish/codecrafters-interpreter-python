@@ -26,7 +26,7 @@ class TokenType(enum.Enum):
     SLASH = "SLASH"
     STRING = "STRING"
     NUMBER = "NUMBER"
-    WORD = "WORD"
+    IDENTIFIER = "IDENTIFIER"
     EOF = "EOF"
 
 @dataclass
@@ -168,7 +168,7 @@ class Scanner:
         while self.is_alpha_numeric(self.peek()):
             self.advance()
         text = self.source[self.start:self.current]
-        self.add_token(TokenType.WORD, text)
+        self.add_token(TokenType.IDENTIFIER, None)
 
     def is_alpha(self, char: str) -> bool:
         return (char >= "a" and char <= "z") or (char >= "A" and char <= "Z") or char == "_"
