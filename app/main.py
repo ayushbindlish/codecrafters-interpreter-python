@@ -37,6 +37,7 @@ class TokenType:
     TAB = '|TAB|'
     NEWLINE = '|NEWLINE|'
     WORD = 'WORD'
+    NUMBER = 'NUMBER'
     STRING = 'STRING'
 
 
@@ -128,7 +129,14 @@ class Tokenizer:
                         self.tokens.append(Token(TokenType.STRING, lexeme, start_line, end_line, literal))
                         i += 1
                         continue
-
+                    if char.isdigit() or (char == '.' and i + 1 < len(line) and line[i + 1].isdigit()):
+                        # Handle number literals
+                        start = i
+                        while i < len(line) and (line[i].isdigit() or line[i] == '.'):
+                            i += 1
+                        lexeme = line[start:i]
+                        self.tokens.append(Token(TokenType.NUMBER, lexeme, line_number, line_number, lexeme))
+                        continue
                     if char.isalpha():
                         # Collect sequences of alphabetic characters as words
                         start = i
