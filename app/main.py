@@ -4,6 +4,7 @@ import sys
 from typing import Any, List, Tuple
 from dataclasses import dataclass
 
+
 class TokenType(enum.Enum):
     LEFT_PAREN = "LEFT_PAREN"
     RIGHT_PAREN = "RIGHT_PAREN"
@@ -27,7 +28,26 @@ class TokenType(enum.Enum):
     STRING = "STRING"
     NUMBER = "NUMBER"
     IDENTIFIER = "IDENTIFIER"
+    # Reserved words
+    AND = "AND"
+    CLASS = "CLASS"
+    ELSE = "ELSE"
+    FALSE = "FALSE"
+    FOR = "FOR"
+    FUN = "FUN"
+    IF = "IF"
+    NIL = "NIL"
+    OR = "OR"
+    PRINT = "PRINT"
+    RETURN = "RETURN"
+    SUPER = "SUPER"
+    THIS = "THIS"
+    TRUE = "TRUE"
+    VAR = "VAR"
+    WHILE = "WHILE"
+
     EOF = "EOF"
+
 
 @dataclass
 class Token:
@@ -41,7 +61,27 @@ class Token:
         literal_str = "null" if self.literal is None else str(self.literal)
         return f"{self.type.value} {self.lexeme} {literal_str}"
 
+
 class Scanner:
+    RESERVED_KEYWORDS = {
+        "and": TokenType.AND,
+        "class": TokenType.CLASS,
+        "else": TokenType.ELSE,
+        "false": TokenType.FALSE,
+        "for": TokenType.FOR,
+        "fun": TokenType.FUN,
+        "if": TokenType.IF,
+        "nil": TokenType.NIL,
+        "or": TokenType.OR,
+        "print": TokenType.PRINT,
+        "return": TokenType.RETURN,
+        "super": TokenType.SUPER,
+        "this": TokenType.THIS,
+        "true": TokenType.TRUE,
+        "var": TokenType.VAR,
+        "while": TokenType.WHILE,
+    }
+
     def __init__(self, source: str) -> None:
         self.source = source
         self.tokens: List[Token] = []
@@ -168,13 +208,17 @@ class Scanner:
         while self.is_alpha_numeric(self.peek()):
             self.advance()
         text = self.source[self.start:self.current]
-        self.add_token(TokenType.IDENTIFIER, None)
+        if text in self.RESERVED_KEYWORDS.keys():
+            self.add_token(self.RESERVED_KEYWORDS.get(text), None)
+        else:
+            self.add_token(TokenType.IDENTIFIER, None)
 
     def is_alpha(self, char: str) -> bool:
         return (char >= "a" and char <= "z") or (char >= "A" and char <= "Z") or char == "_"
 
     def is_alpha_numeric(self, char: str) -> bool:
         return self.is_alpha(char) or self.is_digit(char)
+
 
 def main() -> None:
     if len(sys.argv) < 3:
@@ -194,6 +238,7 @@ def main() -> None:
         print(token)
     if errors:
         exit(65)
+
 
 if __name__ == "__main__":
     main()
