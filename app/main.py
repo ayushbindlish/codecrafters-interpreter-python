@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 
 class TokenType(enum.Enum):
+    """
+    Enum class for all possible token types.
+    """
     LEFT_PAREN = "LEFT_PAREN"
     RIGHT_PAREN = "RIGHT_PAREN"
     LEFT_BRACE = "LEFT_BRACE"
@@ -45,12 +48,14 @@ class TokenType(enum.Enum):
     TRUE = "TRUE"
     VAR = "VAR"
     WHILE = "WHILE"
-
     EOF = "EOF"
 
 
 @dataclass
 class Token:
+    """
+    Data class for tokens.
+    """
     type: TokenType
     lexeme: str
     literal: Any
@@ -58,11 +63,17 @@ class Token:
     end_line: int = None
 
     def __str__(self) -> str:
+        """
+        String representation of the Token.
+        """
         literal_str = "null" if self.literal is None else str(self.literal)
         return f"{self.type.value} {self.lexeme} {literal_str}"
 
 
 class Scanner:
+    """
+    Class responsible for scanning source code and generating tokens.
+    """
     RESERVED_KEYWORDS = {
         "and": TokenType.AND,
         "class": TokenType.CLASS,
@@ -83,6 +94,9 @@ class Scanner:
     }
 
     def __init__(self, source: str) -> None:
+        """
+        Initializes the Scanner with source code.
+        """
         self.source = source
         self.tokens: List[Token] = []
         self.start = 0
@@ -91,6 +105,9 @@ class Scanner:
         self.errors: List[str] = []
 
     def scan_tokens(self) -> Tuple[List[Token], List[str]]:
+        """
+        Scans through the source code and returns the list of tokens and errors.
+        """
         while not self.is_at_end():
             self.start = self.current
             self.scan_token()
@@ -98,9 +115,15 @@ class Scanner:
         return self.tokens, self.errors
 
     def is_at_end(self) -> bool:
+        """
+        Checks if the end of the source code is reached.
+        """
         return self.current >= len(self.source)
 
     def scan_token(self) -> None:
+        """
+        Scans a single token from the source code.
+        """
         char = self.advance()
         match char:
             case "(":
@@ -133,12 +156,14 @@ class Scanner:
                 self.add_token(TokenType.GREATER_EQUAL) if self.match("=") else self.add_token(TokenType.GREATER)
             case "/":
                 if self.match("/"):
+                    # Handle comment until end of line
                     while self.peek() != "\n" and not self.is_at_end():
                         self.advance()
                 else:
                     self.add_token(TokenType.SLASH)
             case " " | "\r" | "\t":
-                ...
+                # Ignore whitespace
+                pass
             case "\n":
                 self.line += 1
             case '"':
@@ -152,22 +177,38 @@ class Scanner:
                     self.errors.append(f"[line {self.line}] Error: Unexpected character: {char}")
 
     def advance(self) -> str:
+        """
+        Advances the current position in the source code by one and returns the character at the new position.
+        """
         self.current += 1
         return self.source[self.current - 1]
 
     def add_token(self, type: TokenType, literal: Any = None) -> None:
+        """
+        Adds a token to the tokens list.
+        """
         text = self.source[self.start:self.current]
         self.tokens.append(Token(type, text, literal, self.line))
 
     def peek(self) -> str:
+        """
+        Returns the current character without advancing the position.
+        """
         return "\0" if self.is_at_end() else self.source[self.current]
 
     def peek_next(self) -> str:
+        """
+        Returns the next character without advancing the position.
+        """
         if self.current + 1 >= len(self.source):
             return "\0"
         return self.source[self.current + 1]
 
     def match(self, expected: str) -> bool:
+        """
+        Checks if the current character matches the expected character.
+        Advances the position if it matches.
+        """
         if self.is_at_end():
             return False
         if self.source[self.current] != expected:
@@ -176,6 +217,9 @@ class Scanner:
         return True
 
     def string(self) -> None:
+        """
+        Handles string literals.
+        """
         start_line = self.line
         while self.peek() != '"' and not self.is_at_end():
             if self.peek() == "\n":
@@ -189,15 +233,21 @@ class Scanner:
         self.tokens.append(Token(TokenType.STRING, self.source[self.start:self.current], value, start_line, self.line))
 
     def is_digit(self, char: str) -> bool:
-        return char >= "0" and char <= "9"
+        """
+        Checks if a character is a digit.
+        """
+        return "0" <= char <= "9"
 
     def number(self) -> None:
+        """
+        Handles number literals.
+        """
         while self.is_digit(self.peek()):
             self.advance()
         if self.peek() == "." and self.is_digit(self.peek_next()):
             self.advance()
-        while self.is_digit(self.peek()):
-            self.advance()
+            while self.is_digit(self.peek()):
+                self.advance()
         lexeme = self.source[self.start:self.current]
         if lexeme.count('.') > 1:
             self.errors.append(f"[line {self.line}] Error: Invalid number: {lexeme}")
@@ -205,22 +255,32 @@ class Scanner:
             self.add_token(TokenType.NUMBER, float(lexeme))
 
     def identifier(self) -> None:
+        """
+        Handles identifiers and reserved words.
+        """
         while self.is_alpha_numeric(self.peek()):
             self.advance()
         text = self.source[self.start:self.current]
-        if text in self.RESERVED_KEYWORDS.keys():
-            self.add_token(self.RESERVED_KEYWORDS.get(text), None)
-        else:
-            self.add_token(TokenType.IDENTIFIER, None)
+        token_type = self.RESERVED_KEYWORDS.get(text, TokenType.IDENTIFIER)
+        self.add_token(token_type)
 
     def is_alpha(self, char: str) -> bool:
-        return (char >= "a" and char <= "z") or (char >= "A" and char <= "Z") or char == "_"
+        """
+        Checks if a character is an alphabetic character or an underscore.
+        """
+        return "a" <= char <= "z" or "A" <= char <= "Z" or char == "_"
 
     def is_alpha_numeric(self, char: str) -> bool:
+        """
+        Checks if a character is alphanumeric.
+        """
         return self.is_alpha(char) or self.is_digit(char)
 
 
 def main() -> None:
+    """
+    Main function to execute the scanner on the provided file.
+    """
     if len(sys.argv) < 3:
         print("Usage: ./your_program.sh tokenize <filename>", file=sys.stderr)
         exit(1)
@@ -229,7 +289,11 @@ def main() -> None:
     if command != "tokenize":
         print(f"Unknown command: {command}", file=sys.stderr)
         exit(1)
-    file_contents = pathlib.Path(filename).read_text()
+    try:
+        file_contents = pathlib.Path(filename).read_text()
+    except FileNotFoundError:
+        print(f"File not found: {filename}", file=sys.stderr)
+        exit(1)
     scanner = Scanner(file_contents)
     tokens, errors = scanner.scan_tokens()
     for error in errors:
